@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulasi Kredit KSP DCK</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#14532d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SimKredit">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Segoe UI, Arial, sans-serif;
+    background: #eef2f0;
+    margin: 0;
+    padding: 20px;
+    color: #1f2b24;
+  }
+  .container { max-width: 950px; margin: 0 auto; }
+  h1 {
+    text-align: center;
+    color: #14532d;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .subtitle { text-align: center; color: #4b5563; font-size: 13px; margin-bottom: 20px; }
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    margin-bottom: 20px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #14532d; }
+  input, select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #cbd5c9;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  input:focus, select:focus { outline: 2px solid #16a34a; border-color: #16a34a; }
+  .btn-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  button {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #128a3e; }
+  button.secondary { background: #374151; }
+  button.secondary:hover { background: #1f2937; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 4px;
+  }
+  .summary-box {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .summary-box .lbl { font-size: 12px; color: #4b5563; }
+  .summary-box .val { font-size: 16px; font-weight: 700; color: #14532d; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: right; }
+  th { background: #14532d; color: #fff; text-align: center; }
+  td:first-child, th:first-child { text-align: center; }
+  tr:nth-child(even) { background: #f9fafb; }
+  .error { color: #b91c1c; font-size: 13px; margin-top: 8px; display: none; }
+  .table-wrap { max-height: 460px; overflow-y: auto; margin-top: 14px; border-radius: 6px; }
+  .hint { font-size: 11.5px; color: #6b7280; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Simulasi Perhitungan Kredit</h1>
+  <div class="subtitle">KSP DCK &mdash; Flat &amp; Anuitas (Efektif)</div>
+
+  <div class="card">
+    <div class="form-grid">
+      <div>
+        <label>Plafond (Rp)</label>
+        <input type="text" id="plafond" value="10.000.000" inputmode="numeric">
+      </div>
+      <div>
+        <label>Jangka Waktu (bulan)</label>
+        <input type="number" id="tenor" value="12" min="1" max="360">
+      </div>
+      <div>
+        <label>Bunga (% per tahun)</label>
+        <input type="number" id="bunga" value="18" min="0" step="0.01">
+      </div>
+      <div>
+        <label>Jenis Bunga</label>
+        <select id="jenis">
+          <option value="flat">Flat</option>
+          <option value="anuitas">Anuitas (Efektif)</option>
+        </select>
+      </div>
+      <div>
+        <label>Nama Anggota (opsional)</label>
+        <input type="text" id="nama" placeholder="Nama peminjam">
+      </div>
+      <div>
+        <label>No. Anggota (opsional)</label>
+        <input type="text" id="noanggota" placeholder="Kode anggota">
+      </div>
+    </div>
+    <div class="error" id="errBox"></div>
+    <div class="btn-row">
+      <button onclick="hitung()">Hitung Simulasi</button>
+      <button class="secondary" onclick="downloadPDF()">Download PDF</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="summary-grid" id="summaryGrid"></div>
+    <div class="table-wrap">
+      <table id="tblAngsuran">
+        <thead>
+          <tr>
+            <th>Bulan</th>
+            <th>Angsuran</th>
+            <th>Pokok</th>
+            <th>Bunga</th>
+            <th>Sisa Pokok</th>
+          </tr>
+        </thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function parseRupiah(str) {
+  return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+}
+function formatRupiah(num) {
+  return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+}
+document.getElementById('plafond').addEventListener('input', function(e) {
+  let v = parseRupiah(e.target.value);
+  e.target.value = v ? v.toLocaleString('id-ID') : '';
+});
+
+let lastData = null;
+
+function hitungFlat(plafond, tenor, bungaTahun) {
+  const bungaBulanRp = plafond * (bungaTahun / 100 / 12);
+  const pokokBulan = plafond / tenor;
+  const angsuranBulan = pokokBulan + bungaBulanRp;
+  const rows = [];
+  let sisa = plafond;
+  for (let i = 1; i <= tenor; i++) {
+    sisa -= pokokBulan;
+    rows.push({
+      bulan: i,
+      angsuran: angsuranBulan,
+      pokok: pokokBulan,
+      bunga: bungaBulanRp,
+      sisa: Math.max(sisa, 0)
+    });
+  }
+  return rows;
+}
+
+function hitungAnuitas(plafond, tenor, bungaTahun) {
+  const i = bungaTahun / 100 / 12;
+  let angsuranBulan;
+  if (i === 0) {
+    angsuranBulan = plafond / tenor;
+  } else {
+    angsuranBulan = plafond * i / (1 - Math.pow(1 + i, -tenor));
+  }
+  const rows = [];
+  let sisa = plafond;
+  for (let n = 1; n <= tenor; n++) {
+    const bungaBulan = sisa * i;
+    let pokokBulan = angsuranBulan - bungaBulan;
+    sisa -= pokokBulan;
+    if (n === tenor) { pokokBulan += sisa; sisa = 0; }
+    rows.push({
+      bulan: n,
+      angsuran: pokokBulan + bungaBulan,
+      pokok: pokokBulan,
+      bunga: bungaBulan,
+      sisa: Math.max(sisa, 0)
+    });
+  }
+  return rows;
+}
+
+function hitung() {
+  const errBox = document.getElementById('errBox');
+  errBox.style.display = 'none';
+
+  const plafond = parseRupiah(document.getElementById('plafond').value);
+  const tenor = parseInt(document.getElementById('tenor').value);
+  const bunga = parseFloat(document.getElementById('bunga').value);
+  const jenis = document.getElementById('jenis').value;
+
+  if (!plafond || plafond <= 0) { showError('Plafond harus diisi dan lebih dari 0.'); return; }
+  if (!tenor || tenor <= 0) { showError('Jangka waktu harus diisi dan lebih dari 0.'); return; }
+  if (isNaN(bunga) || bunga < 0) { showError('Bunga harus diisi dengan angka valid.'); return; }
+
+  const rows = jenis === 'flat' ? hitungFlat(plafond, tenor, bunga) : hitungAnuitas(plafond, tenor, bunga);
+  const totalAngsuran = rows.reduce((a, r) => a + r.angsuran, 0);
+  const totalBunga = rows.reduce((a, r) => a + r.bunga, 0);
+
+  lastData = { plafond, tenor, bunga, jenis, rows, totalAngsuran, totalBunga };
+
+  document.getElementById('summaryGrid').innerHTML = `
+    <div class="summary-box"><div class="lbl">Angsuran per bulan${jenis === 'flat' ? '' : ' (rata-rata)'}</div><div class="val">${formatRupiah(rows[0].angsuran)}</div></div>
+    <div class="summary-box"><div class="lbl">Total Bunga</div><div class="val">${formatRupiah(totalBunga)}</div></div>
+    <div class="summary-box"><div class="lbl">Total Pembayaran</div><div class="val">${formatRupiah(totalAngsuran)}</div></div>
+    <div class="summary-box"><div class="lbl">Jenis Bunga</div><div class="val">${jenis === 'flat' ? 'Flat' : 'Anuitas (Efektif)'}</div></div>
+  `;
+
+  const tbody = document.getElementById('tblBody');
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.bulan}</td>
+      <td>${formatRupiah(r.angsuran)}</td>
+      <td>${formatRupiah(r.pokok)}</td>
+      <td>${formatRupiah(r.bunga)}</td>
+      <td>${formatRupiah(r.sisa)}</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('resultCard').style.display = 'block';
+}
+
+function showError(msg) {
+  const errBox = document.getElementById('errBox');
+  errBox.textContent = msg;
+  errBox.style.display = 'block';
+  document.getElementById('resultCard').style.display = 'none';
+}
+
+function downloadPDF() {
+  if (!lastData) { hitung(); if (!lastData) return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const nama = document.getElementById('nama').value || '-';
+  const noAnggota = document.getElementById('noanggota').value || '-';
+
+  doc.setFontSize(14);
+  doc.text('SIMULASI PERHITUNGAN KREDIT', 105, 15, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text('KSP DCK', 105, 21, { align: 'center' });
+
+  doc.setFontSize(10);
+  let y = 32;
+  const info = [
+    ['Nama Anggota', nama],
+    ['No. Anggota', noAnggota],
+    ['Plafond', formatRupiah(lastData.plafond)],
+    ['Jangka Waktu', lastData.tenor + ' bulan'],
+    ['Bunga', lastData.bunga + ' % per tahun'],
+    ['Jenis Bunga', lastData.jenis === 'flat' ? 'Flat' : 'Anuitas (Efektif)'],
+    ['Total Bunga', formatRupiah(lastData.totalBunga)],
+    ['Total Pembayaran', formatRupiah(lastData.totalAngsuran)],
+  ];
+  info.forEach(([k, v]) => {
+    doc.text(String(k), 14, y);
+    doc.text(':', 55, y);
+    doc.text(String(v), 60, y);
+    y += 6;
+  });
+
+  const body = lastData.rows.map(r => [
+    r.bulan,
+    formatRupiah(r.angsuran),
+    formatRupiah(r.pokok),
+    formatRupiah(r.bunga),
+    formatRupiah(r.sisa)
+  ]);
+
+  doc.autoTable({
+    startY: y + 4,
+    head: [['Bulan', 'Angsuran', 'Pokok', 'Bunga', 'Sisa Pokok']],
+    body: body,
+    theme: 'grid',
+    headStyles: { fillColor: [20, 83, 45], halign: 'center' },
+    styles: { fontSize: 8, halign: 'right' },
+    columnStyles: { 0: { halign: 'center' } }
+  });
+
+  doc.save('Simulasi_Kredit_' + (nama !== '-' ? nama.replace(/\s+/g, '_') : 'KSP') + '.pdf');
+}
+
+hitung();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW gagal:', err));
+  });
+}
+</script>
+</body>
+</html>
