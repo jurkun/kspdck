@@ -1,4 +1,4 @@
-const CACHE_NAME = 'simkredit-v1';
+const CACHE_NAME = 'simkredit-v3';
 const ASSETS = [
   '/kspdck/',
   '/kspdck/index.html',
@@ -24,15 +24,17 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Network-first: selalu coba ambil versi terbaru dari server dulu,
+  // baru fallback ke cache kalau offline.
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      return cached || fetch(e.request).then((res) => {
+    fetch(e.request)
+      .then((res) => {
         if (e.request.method === 'GET' && res.ok) {
           const resClone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
         }
         return res;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(e.request))
   );
 });

@@ -129,9 +129,11 @@
       <button onclick="hitung()">Hitung Simulasi</button>
       <button class="secondary" onclick="downloadPDF()">Download PDF</button>
     </div>
-   <div>
-      <Label>Conversi Rate :Flat ke Eff </Label>
-   </div>
+    <div id="konversiBox" style="display:none; margin-top: 14px; padding: 10px 12px; background: #fefce8; border: 1px solid #fde68a; border-radius: 6px;">
+      <label style="margin-bottom: 2px;">Estimasi Konversi Bunga Flat &rarr; Efektif</label>
+      <div id="konversiText" style="font-size: 13.5px; color: #78350f;"></div>
+      <div class="hint">Rumus pendekatan: Efektif &asymp; (2 &times; n &times; Flat) / (n + 1), n = jangka waktu (bulan). Hasil aktual bisa sedikit berbeda tergantung metode bank/koperasi.</div>
+    </div>
   </div>
 
   <div class="card" id="resultCard" style="display:none;">
@@ -212,6 +214,11 @@ function hitungAnuitas(plafond, tenor, bungaTahun) {
   return rows;
 }
 
+function flatKeEfektif(bungaFlat, tenor) {
+  // Rumus pendekatan yang umum dipakai: Eff ≈ (2 x n x Flat) / (n + 1)
+  return (2 * tenor * bungaFlat) / (tenor + 1);
+}
+
 function hitung() {
   const errBox = document.getElementById('errBox');
   errBox.style.display = 'none';
@@ -250,6 +257,16 @@ function hitung() {
   `).join('');
 
   document.getElementById('resultCard').style.display = 'block';
+
+  const konversiBox = document.getElementById('konversiBox');
+  const konversiText = document.getElementById('konversiText');
+  if (jenis === 'flat') {
+    const estEfektif = flatKeEfektif(bunga, tenor);
+    konversiText.innerHTML = `Bunga Flat <b>${bunga}%</b> per tahun &asymp; setara Bunga Efektif <b>${estEfektif.toFixed(2)}%</b> per tahun.`;
+    konversiBox.style.display = 'block';
+  } else {
+    konversiBox.style.display = 'none';
+  }
 }
 
 function showError(msg) {
