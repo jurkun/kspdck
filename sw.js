@@ -1,10 +1,10 @@
 const CACHE_NAME = 'simkredit-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/kspdck/',
+  '/kspdck/index.html',
+  '/kspdck/manifest.json',
+  '/kspdck/icon-192.png',
+  '/kspdck/icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
